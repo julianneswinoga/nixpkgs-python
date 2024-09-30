@@ -133,6 +133,19 @@
                 })];
               });
             }
+            # Fix ensurepip for 3.6: https://bugs.python.org/issue45700
+            { condition = version: versionInBetween version "3.6.15" "3.6";
+              override = pkg: pkg.overrideAttrs (old: {
+                patches = old.patches ++ [(pkgs.fetchpatch {
+                  url = "https://github.com/python/cpython/commit/8766cb74.patch";
+                  sha256 = "IzAp3M6hpSNcbVRttzvXNDyAVK7vLesKZDEDkdYbuww=";
+                })
+                (pkgs.fetchpatch {
+                  url = "https://github.com/python/cpython/commit/f0be4bbb.patch";
+                  sha256 = "FUF7ZkkatS4ON4++pR9XJQFQLW1kKSVzSs8NAS19bDY=";
+                })];
+              });
+            }
             { condition = version: versionInBetween version "3.4" "3.0";
               override = pkg: (pkg.override {
                 # no existing patch available
@@ -214,6 +227,12 @@
 
             mkdir $out
             ${python}/bin/python -c 'import ssl; print(ssl.OPENSSL_VERSION)' | tee $out/openssl-version
+          '';
+        } // lib.optionalAttrs (versionInBetween version "3.12" "3.6") {
+          ${version + "-ensurepip"} = pkgs.runCommand "${version}-test-ensurepip" { } ''
+            set -x
+
+            ${python}/bin/python -m ensurepip --help || echo 'ensurepip succeeded'
           '';
         }) self.packages.${system});
   };
